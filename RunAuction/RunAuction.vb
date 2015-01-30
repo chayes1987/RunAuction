@@ -7,14 +7,18 @@ Imports System.Threading
 Public Module RunAuction
     Private Const DB_NAME As String = "auctions"
     Private context As IZmqContext = ZmqContext.Create()
-    Private auctionRunning As ISendSocket
+    Private auctionRunning, bidChanged, auctionOver As ISendSocket
     Private Const DECREMENT_AMOUNT As Integer = 50
 
     Public Sub Main()
         Dim subscribeToAuctionStartedThread As New Thread(AddressOf SubscribeToAuctionStarted)
         subscribeToAuctionStartedThread.Start()
+        Dim subscribeToBidPlacedThread As New Thread(AddressOf SubscribeToBidPlaced)
+        subscribeToBidPlacedThread.Start()
         auctionRunning = context.CreatePublishSocket()
         auctionRunning.Bind("tcp://127.0.0.1:1010")
+        bidChanged = context.CreatePublishSocket()
+        bidChanged.Bind("tcp://127.0.0.1:1011")
     End Sub
 
     Private Sub SubscribeToAuctionStarted()
@@ -34,6 +38,24 @@ Public Module RunAuction
             Thread.Sleep(10000)
             Dim runAuctionThread As New Thread(AddressOf RunAuction)
             runAuctionThread.Start()
+        End While
+    End Sub
+
+    Private Sub SubscribeToBidPlaced()
+        Dim subscriber As ISubscribeSocket = context.CreateSubscribeSocket()
+        subscriber.Connect("tcp://127.0.0.1:1101")
+        Dim prefix As Byte() = System.Text.Encoding.ASCII.GetBytes("BidPlaced")
+        subscriber.Subscribe(prefix)
+        Console.WriteLine("Subscribed to BidPlaced event...")
+
+        While (True)
+            Dim message As Byte() = subscriber.Receive()
+            Dim receiveStr As String = System.Text.Encoding.ASCII.GetString(message)
+            Console.WriteLine("Received command " + receiveStr)
+            Dim id As String = ParseMessage(receiveStr, "<id>", "</id>")
+            Dim bidderEmail As String = ParseMessage(receiveStr, "<params>", "<params>")
+            Dim msg As Byte() = System.Text.Encoding.ASCII.GetBytes("AuctionOver <id>" + id + "</id> " + "<params>" + bidderEmail + "</params>")
+            auctionOver.Send(msg)
         End While
     End Sub
 
