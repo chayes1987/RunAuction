@@ -15,6 +15,9 @@ Public Module RunAuction
 
         Dim subscribeToAuctionStartedThread As New Thread(AddressOf SubscribeToAuctionStarted)
         subscribeToAuctionStartedThread.Start()
+
+        auctionRunning = context.CreatePublishSocket()
+        auctionRunning.Bind("tcp://127.0.0.1:1010")
     End Sub
 
     Private Sub SubscribeToAuctionStarted()
@@ -30,6 +33,8 @@ Public Module RunAuction
             Console.WriteLine(receiveStr)
             Dim id As String = ParseMessage(receiveStr, "<id>", "</id>")
             Dim msg As Byte() = System.Text.Encoding.ASCII.GetBytes("AuctionRunning <id>" + id + "</id>")
+            auctionRunning.Send(msg)
+            Thread.Sleep(10000)
         End While
     End Sub
 
