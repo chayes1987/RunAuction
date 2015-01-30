@@ -8,14 +8,11 @@ Public Module RunAuction
     Private Const DB_NAME As String = "auctions"
     Private context As IZmqContext = ZmqContext.Create()
     Private auctionRunning As ISendSocket
+    Private Const DECREMENT_AMOUNT As Integer = 50
 
     Public Sub Main()
-        Dim client As New CouchClient()
-        Dim db As CouchDatabase = client.GetDatabase(DB_NAME)
-
         Dim subscribeToAuctionStartedThread As New Thread(AddressOf SubscribeToAuctionStarted)
         subscribeToAuctionStartedThread.Start()
-
         auctionRunning = context.CreatePublishSocket()
         auctionRunning.Bind("tcp://127.0.0.1:1010")
     End Sub
@@ -35,6 +32,8 @@ Public Module RunAuction
             Dim msg As Byte() = System.Text.Encoding.ASCII.GetBytes("AuctionRunning <id>" + id + "</id>")
             auctionRunning.Send(msg)
             Thread.Sleep(10000)
+            Dim runAuctionThread As New Thread(AddressOf RunAuction)
+            runAuctionThread.Start()
         End While
     End Sub
 
@@ -43,5 +42,17 @@ Public Module RunAuction
         Dim substring As String = message.Substring(startIndex)
         Return substring.Substring(0, substring.LastIndexOf(endTag))
     End Function
+
+    Private Sub RunAuction(ByVal id As String)
+        Dim client As New CouchClient()
+        Dim db As CouchDatabase = client.GetDatabase(DB_NAME)
+        Dim document As AuctionItem = db.GetDocument(Of AuctionItem)(id)
+
+        Dim currentBid As Double = document.Starting_Bid
+
+        While (True)
+
+        End While
+    End Sub
 
 End Module
