@@ -7,7 +7,7 @@ Imports System.Threading
 Public Module RunAuction
     Private Const DB_NAME As String = "auctions"
     Private context As IZmqContext = ZmqContext.Create()
-    Private auctionRunning, bidChanged, auctionOver, acknowledgment As ISendSocket
+    Private auctionRunning, bidChanged, auctionOver, acknowledgement As ISendSocket
     Private Const DECREMENT_AMOUNT As Integer = 50
     Private auctionIsRunning As Boolean = False
 
@@ -17,18 +17,18 @@ Public Module RunAuction
         Dim subscribeToBidPlacedThread As New Thread(AddressOf SubscribeToBidPlaced)
         subscribeToBidPlacedThread.Start()
         auctionRunning = context.CreatePublishSocket()
-        auctionRunning.Bind("tcp://127.0.0.1:1010")
+        auctionRunning.Bind("tcp://127.0.0.1:1100")
         bidChanged = context.CreatePublishSocket()
-        bidChanged.Bind("tcp://127.0.0.1:1011")
+        bidChanged.Bind("tcp://127.0.0.1:1101")
         auctionOver = context.CreatePublishSocket()
-        auctionOver.Bind("tcp://127.0.0.1:1100")
-        acknowledgment = context.CreatePublishSocket()
-        acknowledgment.Bind("tcp://127.0.0.1:1111")
+        auctionOver.Bind("tcp://127.0.0.1:1110")
+        acknowledgement = context.CreatePublishSocket()
+        acknowledgement.Bind("tcp://127.0.0.1:1001")
     End Sub
 
     Private Sub SubscribeToAuctionStarted()
         Dim subscriber As ISubscribeSocket = context.CreateSubscribeSocket()
-        subscriber.Connect("tcp://127.0.0.1:1001")
+        subscriber.Connect("tcp://127.0.0.1:1010")
         Dim prefix As Byte() = System.Text.Encoding.ASCII.GetBytes("AuctionStarted")
         subscriber.Subscribe(prefix)
         Console.WriteLine("Subscribed to AuctionStarted event...")
@@ -43,7 +43,7 @@ Public Module RunAuction
             auctionRunning.Send(msg)
             Thread.Sleep(10000)
             Dim runAuctionThread As New Thread(AddressOf RunAuction)
-            runAuctionThread.Start()
+            runAuctionThread.Start(id)
         End While
     End Sub
 
@@ -97,7 +97,7 @@ Public Module RunAuction
 
     Private Sub PublishAcknowledgement(ByVal message As String)
         Dim msg As Byte() = System.Text.Encoding.ASCII.GetBytes("ACK: " + message)
-        acknowledgment.Send(msg)
+        acknowledgement.Send(msg)
     End Sub
 
 End Module
