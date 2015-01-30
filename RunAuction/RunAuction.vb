@@ -28,7 +28,15 @@ Public Module RunAuction
             Dim message As Byte() = subscriber.Receive()
             Dim receiveStr As String = System.Text.Encoding.ASCII.GetString(message)
             Console.WriteLine(receiveStr)
+            Dim id As String = ParseMessage(receiveStr, "<id>", "</id>")
+            Dim msg As Byte() = System.Text.Encoding.ASCII.GetBytes("AuctionRunning <id>" + id + "</id>")
         End While
     End Sub
+
+    Private Function ParseMessage(ByVal message As String, ByVal startTag As String, ByVal endTag As String) As String
+        Dim startIndex As Integer = message.IndexOf(startTag) + startTag.Length
+        Dim substring As String = message.Substring(startIndex)
+        Return substring.Substring(0, substring.LastIndexOf(endTag))
+    End Function
 
 End Module
