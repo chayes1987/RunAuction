@@ -9,6 +9,7 @@ Public Module RunAuction
     Private context As IZmqContext = ZmqContext.Create()
     Private auctionRunning, bidChanged, auctionOver As ISendSocket
     Private Const DECREMENT_AMOUNT As Integer = 50
+    Private auctionIsRunning As Boolean = False
 
     Public Sub Main()
         Dim subscribeToAuctionStartedThread As New Thread(AddressOf SubscribeToAuctionStarted)
@@ -19,6 +20,8 @@ Public Module RunAuction
         auctionRunning.Bind("tcp://127.0.0.1:1010")
         bidChanged = context.CreatePublishSocket()
         bidChanged.Bind("tcp://127.0.0.1:1011")
+        auctionOver = context.CreatePublishSocket()
+        auctionOver.Bind("tcp://127.0.0.1:1100")
     End Sub
 
     Private Sub SubscribeToAuctionStarted()
@@ -52,10 +55,33 @@ Public Module RunAuction
             Dim message As Byte() = subscriber.Receive()
             Dim receiveStr As String = System.Text.Encoding.ASCII.GetString(message)
             Console.WriteLine("Received command " + receiveStr)
+            auctionIsRunning = False
             Dim id As String = ParseMessage(receiveStr, "<id>", "</id>")
             Dim bidderEmail As String = ParseMessage(receiveStr, "<params>", "<params>")
             Dim msg As Byte() = System.Text.Encoding.ASCII.GetBytes("AuctionOver <id>" + id + "</id> " + "<params>" + bidderEmail + "</params>")
             auctionOver.Send(msg)
+        End While
+    End Sub
+
+    Private Sub RunAuction(ByVal id As String)
+        Dim client As New CouchClient()
+        Dim db As CouchDatabase = client.GetDatabase(DB_NAME)
+        Dim document As AuctionItem = db.GetDocument(Of AuctionItem)(id)
+
+        Dim currentBid As Double = document.Starting_Bid
+        auctionIsRunning = True
+
+        While (auctionIsRunning)
+            Thread.Sleep(10000)
+
+            If (currentBid >= document.Estimated_Value) Then
+                currentBid -= DECREMENT_AMOUNT
+                bidChanged.Send(System.Text.Encoding.ASCII.GetBytes("CurrentBidChanged <id>" + id + "</id> " + "<params>" + currentBid.ToString + "</params>"))
+            Else
+                auctionOver.Send(System.Text.Encoding.ASCII.GetBytes("AuctionOver <id>" + id + "</id>" + "<params>No Winner<params>"))
+                auctionIsRunning = False
+                Exit Sub
+            End If
         End While
     End Sub
 
@@ -64,17 +90,5 @@ Public Module RunAuction
         Dim substring As String = message.Substring(startIndex)
         Return substring.Substring(0, substring.LastIndexOf(endTag))
     End Function
-
-    Private Sub RunAuction(ByVal id As String)
-        Dim client As New CouchClient()
-        Dim db As CouchDatabase = client.GetDatabase(DB_NAME)
-        Dim document As AuctionItem = db.GetDocument(Of AuctionItem)(id)
-
-        Dim currentBid As Double = document.Starting_Bid
-
-        While (True)
-
-        End While
-    End Sub
 
 End Module
