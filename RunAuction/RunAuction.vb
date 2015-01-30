@@ -7,7 +7,7 @@ Imports System.Threading
 Public Module RunAuction
     Private Const DB_NAME As String = "auctions"
     Private context As IZmqContext = ZmqContext.Create()
-    Private auctionRunning, bidChanged, auctionOver As ISendSocket
+    Private auctionRunning, bidChanged, auctionOver, acknowledgment As ISendSocket
     Private Const DECREMENT_AMOUNT As Integer = 50
     Private auctionIsRunning As Boolean = False
 
@@ -22,6 +22,8 @@ Public Module RunAuction
         bidChanged.Bind("tcp://127.0.0.1:1011")
         auctionOver = context.CreatePublishSocket()
         auctionOver.Bind("tcp://127.0.0.1:1100")
+        acknowledgment = context.CreatePublishSocket()
+        acknowledgment.Bind("tcp://127.0.0.1:1111")
     End Sub
 
     Private Sub SubscribeToAuctionStarted()
@@ -35,6 +37,7 @@ Public Module RunAuction
             Dim message As Byte() = subscriber.Receive()
             Dim receiveStr As String = System.Text.Encoding.ASCII.GetString(message)
             Console.WriteLine(receiveStr)
+            PublishAcknowledgement(receiveStr)
             Dim id As String = ParseMessage(receiveStr, "<id>", "</id>")
             Dim msg As Byte() = System.Text.Encoding.ASCII.GetBytes("AuctionRunning <id>" + id + "</id>")
             auctionRunning.Send(msg)
@@ -55,6 +58,7 @@ Public Module RunAuction
             Dim message As Byte() = subscriber.Receive()
             Dim receiveStr As String = System.Text.Encoding.ASCII.GetString(message)
             Console.WriteLine("Received command " + receiveStr)
+            PublishAcknowledgement(receiveStr)
             auctionIsRunning = False
             Dim id As String = ParseMessage(receiveStr, "<id>", "</id>")
             Dim bidderEmail As String = ParseMessage(receiveStr, "<params>", "<params>")
@@ -90,5 +94,10 @@ Public Module RunAuction
         Dim substring As String = message.Substring(startIndex)
         Return substring.Substring(0, substring.LastIndexOf(endTag))
     End Function
+
+    Private Sub PublishAcknowledgement(ByVal message As String)
+        Dim msg As Byte() = System.Text.Encoding.ASCII.GetBytes("ACK: " + message)
+        acknowledgment.Send(msg)
+    End Sub
 
 End Module
