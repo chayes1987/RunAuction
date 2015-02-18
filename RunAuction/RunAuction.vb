@@ -6,8 +6,9 @@ Imports System.Threading
 
 Public Module RunAuction
     Private context As IZmqContext = ZmqContext.Create()
-    Private auctionStartedAck, bidPlacedAck, auctionEventPub As ISendSocket
+    Private auctionStartedAck, bidPlacedAck, auctionRunningPub, auctionEventPub As ISendSocket
     Private auctionRunning As Boolean = False
+    Private runAuctionThread As Thread
 
     Public Sub Main()
         InitializePublishers()
@@ -28,6 +29,8 @@ Public Module RunAuction
         auctionStartedAck.Bind(Constants.AUCTION_STARTED_ACK_ADR)
         bidPlacedAck = context.CreatePublishSocket()
         bidPlacedAck.Bind(Constants.BID_PLACED_ACK_ADR)
+        auctionRunningPub = context.CreatePublishSocket()
+        auctionRunningPub.Bind(Constants.AUCTION_RUNNING_PUB_ADR)
         auctionEventPub = context.CreatePublishSocket()
         auctionEventPub.Bind(Constants.AUCTION_EVENT_PUB_ADR)
     End Sub
@@ -45,14 +48,14 @@ Public Module RunAuction
             Dim id As String = ParseMessage(auctionStartedEvt, "<id>", "</id>")
             PublishAuctionRunningEvent(id)
             Thread.Sleep(Constants.WAIT_TIME)
-            Dim runAuctionThread As New Thread(AddressOf RunAuction)
+            runAuctionThread = New Thread(AddressOf RunAuction)
             runAuctionThread.Start(id)
         End While
     End Sub
 
     Private Sub PublishAuctionRunningEvent(ByVal id As String)
         Dim auctionRunningEvt As String = String.Concat("AuctionRunning <id>", id, "</id>")
-        auctionEventPub.Send(System.Text.Encoding.ASCII.GetBytes(auctionRunningEvt))
+        auctionRunningPub.Send(System.Text.Encoding.ASCII.GetBytes(auctionRunningEvt))
         Console.WriteLine("PUB: " & auctionRunningEvt)
     End Sub
 
@@ -67,18 +70,23 @@ Public Module RunAuction
             Thread.Sleep(Constants.WAIT_TIME)
 
             If (currentBid > document.Estimated_Value) Then
-                currentBid -= Constants.DECREMENT_AMOUNT
-                Dim bidChangedEvt As String = String.Concat("BidChanged <id>", id, "</id> ", "<params>", currentBid.ToString, "</params>")
-                auctionEventPub.Send(System.Text.Encoding.ASCII.GetBytes(bidChangedEvt))
-                Console.WriteLine("PUB: " & bidChangedEvt)
+                If (auctionRunning) Then
+                    currentBid -= Constants.DECREMENT_AMOUNT
+                    Dim bidChangedEvt As String = String.Concat("BidChanged <id>", id,
+                        "</id> ", "<params>", currentBid.ToString, "</params>")
+                    auctionEventPub.Send(System.Text.Encoding.ASCII.GetBytes(bidChangedEvt))
+                    Console.WriteLine("PUB: " & bidChangedEvt)
+                End If
             Else
-                Dim auctionOverEvt As String = String.Concat("AuctionOver <id>", id, "</id>", " <params>No Winner</params>")
+                Dim auctionOverEvt As String = String.Concat("AuctionOver <id>", id,
+                    "</id>", " <params>No Winner</params>")
                 auctionEventPub.Send(System.Text.Encoding.ASCII.GetBytes(auctionOverEvt))
                 Console.WriteLine("PUB: " & auctionOverEvt)
                 auctionRunning = False
                 Exit Sub
             End If
         End While
+        runAuctionThread.Abort()
     End Sub
 
     Private Function ParseMessage(ByVal message As String, ByVal startTag As String, ByVal endTag As String) As String

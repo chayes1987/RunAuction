@@ -7,6 +7,7 @@
     Public Const BID_PLACED_ADR As String = "tcp://172.31.32.29:1101"
     Public Const BID_PLACED_ACK_ADR As String = "tcp://*:1110"
     Public Const AUCTION_EVENT_PUB_ADR As String = "tcp://*:1111"
+    Public Const AUCTION_RUNNING_PUB_ADR As String = "tcp://*:1000"
     Public Const AUCTION_RUNNING_ACK_ADR As String = "tcp://172.31.32.24:2000"
     Public Const BID_CHANGED_ACK_ADR As String = "tcp://172.31.32.25:2001"
     Public Const AUCTION_OVER_ACK_ADR As String = "tcp://172.31.32.28:2010"
