@@ -6,11 +6,11 @@ Imports System.Threading
 Public Module RunAuction
     Private context As IZmqContext = ZmqContext.Create()
     Private bidPlacedAck, auctionEventPub As ISendSocket
-    Private _auctions As IDictionary(Of Integer, AuctionRunner)
+    Private _auctions As IDictionary(Of String, AuctionRunner)
 
 
     Public Sub Main()
-        _auctions = New Dictionary(Of Integer, AuctionRunner)
+        _auctions = New Dictionary(Of String, AuctionRunner)
         InitializePublishers()
         InitializeSubscribers()
         SubscribeToAuctionStarted()
