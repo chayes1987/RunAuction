@@ -99,6 +99,7 @@
     <Import Include="System.Threading.Tasks" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AuctionRunner.vb" />
     <Compile Include="AuctionItem.vb" />
     <Compile Include="Constants.vb" />
     <Compile Include="My Project\AssemblyInfo.vb" />
