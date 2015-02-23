@@ -53,6 +53,8 @@ Public Module RunAuction
             PublishAuctionRunningEvent(auctionRunningPub, id)
             Dim auctionRunner As New AuctionRunner(id, auctionEventPub)
             _auctions.Add(id, auctionRunner)
+            Dim runAuctionThread As New Thread(AddressOf auctionRunner.RunAuction)
+            runAuctionThread.Start()
         End While
     End Sub
 
@@ -103,6 +105,7 @@ Public Module RunAuction
             Dim bidderEmail As String = ParseMessage(bidPlacedEvt, "<params>", "</params>")
             Dim auctionOverEvt As String = String.Concat("AuctionOver <id>", id, "</id> ", "<params>", bidderEmail, "</params>")
             auctionEventPub.Send(System.Text.Encoding.ASCII.GetBytes(auctionOverEvt))
+            Console.WriteLine("PUB: " + auctionOverEvt)
         End While
     End Sub
 

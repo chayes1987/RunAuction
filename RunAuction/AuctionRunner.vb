@@ -5,7 +5,6 @@ Imports System.Threading
 
 Public Class AuctionRunner
     Private _currentAuctionId As String
-    Private _context As IZmqContext
     Private _auctionEventPub As ISendSocket
     Public auctionRunning As Boolean = False
 
@@ -13,8 +12,6 @@ Public Class AuctionRunner
     Public Sub New(ByVal currentAuctionId As String, ByVal auctionEventPub As ISendSocket)
         Me._currentAuctionId = currentAuctionId
         Me._auctionEventPub = auctionEventPub
-        Thread.Sleep(Constants.WAIT_TIME)
-        RunAuction()
     End Sub
 
     Public Sub RunAuction()
