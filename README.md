@@ -9,14 +9,14 @@ for the project. It is responsible for running the auction. It is responsible fo
 - Database: auctions
 
 - Sample Items:
-- {
+{
    "_id": "1",
    "_rev": "1-194f699921e40fc5fe4f35420fe22fd6",
    "estimated_value": 1500,
    "starting_bid": 2000
 }
 
-- {
+{
    "_id": "2",
    "_rev": "1-8f297ae9d7cfbc2096b638d51ef3d174",
    "estimated_value": 699,
