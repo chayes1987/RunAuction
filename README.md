@@ -36,3 +36,7 @@ None
 - Configure Windows Firewall to allow port access for 0mq
 
 - Service runs and works as expected
+
+## Problems encountered
+
+- 0mq does not allow sharing sockets between threads. Where necessary, each thread had its own publishing socket
