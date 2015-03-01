@@ -1,26 +1,27 @@
 ﻿Imports ZeroMQ
 Imports ZeroMQ.Sockets
 Imports System.Threading
+Imports System.Configuration
+Imports System.Text
 
 
 Public Module RunAuction
-    Private context As IZmqContext = ZmqContext.Create()
-    Private bidPlacedAck, auctionEventPub As ISendSocket
-    Private _auctions As IDictionary(Of String, AuctionRunner)
+    Private _context As IZmqContext = ZmqContext.Create()
+    Private _bidPlacedAck, _auctionEventPub As ISendSocket
+    Private _auctionRunner As AuctionRunner
 
 
     Public Sub Main()
-        _auctions = New Dictionary(Of String, AuctionRunner)
         InitializePublishers()
         InitializeSubscribers()
         SubscribeToAuctionStarted()
     End Sub
 
     Private Sub InitializePublishers()
-        bidPlacedAck = context.CreatePublishSocket()
-        bidPlacedAck.Bind(Constants.BID_PLACED_ACK_ADR)
-        auctionEventPub = context.CreatePublishSocket()
-        auctionEventPub.Bind(Constants.AUCTION_EVENT_PUB_ADR)
+        _bidPlacedAck = _context.CreatePublishSocket()
+        _bidPlacedAck.Bind(ConfigurationManager.AppSettings("bidPlacedAckAddr"))
+        _auctionEventPub = _context.CreatePublishSocket()
+        _auctionEventPub.Bind(ConfigurationManager.AppSettings("auctionEventPubAddr"))
     End Sub
 
     Private Sub InitializeSubscribers()
@@ -35,37 +36,38 @@ Public Module RunAuction
     End Sub
 
     Private Sub SubscribeToAuctionStarted()
-        Dim auctionStartedAck As ISendSocket = context.CreatePublishSocket()
-        auctionStartedAck.Bind(Constants.AUCTION_STARTED_ACK_ADR)
-        Dim auctionRunningPub As ISendSocket = context.CreatePublishSocket()
-        auctionRunningPub.Bind(Constants.AUCTION_RUNNING_PUB_ADR)
+        Dim auctionStartedAck As ISendSocket = _context.CreatePublishSocket()
+        auctionStartedAck.Bind(ConfigurationManager.AppSettings("auctionStartedAckAddr"))
+        Dim auctionRunningPub As ISendSocket = _context.CreatePublishSocket()
+        auctionRunningPub.Bind(ConfigurationManager.AppSettings("auctionRunningPubAddr"))
 
-        Dim auctionStartedSub As ISubscribeSocket = context.CreateSubscribeSocket()
-        auctionStartedSub.Connect(Constants.AUCTION_STARTED_SUB_ADR)
-        auctionStartedSub.Subscribe(System.Text.Encoding.ASCII.GetBytes(Constants.AUCTION_STARTED_TOPIC))
-        Console.WriteLine("SUB: " & Constants.AUCTION_STARTED_TOPIC)
+        Dim auctionStartedSub As ISubscribeSocket = _context.CreateSubscribeSocket()
+        auctionStartedSub.Connect(ConfigurationManager.AppSettings("auctionStartedSubAddr"))
+        Dim auctionStartedTopic As String = ConfigurationManager.AppSettings("auctionStartedTopic")
+        auctionStartedSub.Subscribe(System.Text.Encoding.ASCII.GetBytes(auctionStartedTopic))
+        Console.WriteLine("SUB: " & auctionStartedTopic)
 
         While (True)
-            Dim auctionStartedEvt As String = System.Text.Encoding.ASCII.GetString(auctionStartedSub.Receive())
+            Dim auctionStartedEvt As String = Encoding.ASCII.GetString(auctionStartedSub.Receive())
             Console.WriteLine("REC: " & auctionStartedEvt)
             PublishAuctionStartedAck(auctionStartedAck, auctionStartedEvt)
             Dim id As String = ParseMessage(auctionStartedEvt, "<id>", "</id>")
             PublishAuctionRunningEvent(auctionRunningPub, id)
-            Dim auctionRunner As New AuctionRunner(id, auctionEventPub)
-            _auctions.Add(id, auctionRunner)
-            Dim runAuctionThread As New Thread(AddressOf auctionRunner.RunAuction)
+            _auctionRunner = New AuctionRunner(id, _auctionEventPub)
+            Dim runAuctionThread As New Thread(AddressOf _auctionRunner.RunAuction)
             runAuctionThread.Start()
         End While
     End Sub
 
     Private Sub PublishAuctionStartedAck(ByVal auctionStartedAck As ISendSocket, ByVal message As String)
-        auctionStartedAck.Send(System.Text.Encoding.ASCII.GetBytes("ACK: " & message))
-        Console.WriteLine("ACK SENT...")
+        Dim msg As String = "ACK " & message
+        auctionStartedAck.Send(Encoding.ASCII.GetBytes(msg))
+        Console.WriteLine("PUB: " & msg)
     End Sub
 
     Private Sub PublishAuctionRunningEvent(ByVal auctionRunningPub As ISendSocket, ByVal id As String)
-        Dim auctionRunningEvt As String = String.Concat("AuctionRunning <id>", id, "</id>")
-        auctionRunningPub.Send(System.Text.Encoding.ASCII.GetBytes(auctionRunningEvt))
+        Dim auctionRunningEvt As String = String.Concat(ConfigurationManager.AppSettings("auctionRunningTopic"), " <id>", id, "</id>")
+        auctionRunningPub.Send(Encoding.ASCII.GetBytes(auctionRunningEvt))
         Console.WriteLine("PUB: " & auctionRunningEvt)
     End Sub
 
@@ -76,59 +78,57 @@ Public Module RunAuction
     End Function
 
     Private Sub SubscribeToAuctionRunningAck()
-        Dim auctionRunningAckSub As ISubscribeSocket = context.CreateSubscribeSocket()
-        auctionRunningAckSub.Connect(Constants.AUCTION_RUNNING_ACK_ADR)
-        auctionRunningAckSub.Subscribe(System.Text.Encoding.ASCII.GetBytes(Constants.AUCTION_RUNNING_ACK_TOPIC))
+        Dim auctionRunningAckSub As ISubscribeSocket = _context.CreateSubscribeSocket()
+        auctionRunningAckSub.Connect(ConfigurationManager.AppSettings("auctionRunningAckAddr"))
+        auctionRunningAckSub.Subscribe(Encoding.ASCII.GetBytes(ConfigurationManager.AppSettings("auctionRunningAckTopic")))
 
         While (True)
-            Console.WriteLine(System.Text.Encoding.ASCII.GetString(auctionRunningAckSub.Receive()))
+            Console.WriteLine("REC: " & Encoding.ASCII.GetString(auctionRunningAckSub.Receive()))
         End While
     End Sub
 
     Private Sub PublishBidPlacedAck(ByVal message As String)
-        bidPlacedAck.Send(System.Text.Encoding.ASCII.GetBytes("ACK: " & message))
-        Console.WriteLine("ACK SENT...")
+        Dim bidPlacedAck As String = "ACK " & message
+        _bidPlacedAck.Send(Encoding.ASCII.GetBytes(bidPlacedAck))
+        Console.WriteLine("PUB: " & bidPlacedAck)
     End Sub
 
     Private Sub SubscribeToBidPlaced()
-        Dim subscriber As ISubscribeSocket = context.CreateSubscribeSocket()
-        subscriber.Connect(Constants.BID_PLACED_ADR)
-        subscriber.Subscribe(System.Text.Encoding.ASCII.GetBytes(Constants.BID_PLACED_TOPIC))
-        Console.WriteLine("SUB: " & Constants.BID_PLACED_TOPIC)
+        Dim subscriber As ISubscribeSocket = _context.CreateSubscribeSocket()
+        subscriber.Connect(ConfigurationManager.AppSettings("bidPlacedAddr"))
+        Dim bidPlacedTopic As String = ConfigurationManager.AppSettings("bidPlacedTopic")
+        subscriber.Subscribe(Encoding.ASCII.GetBytes(bidPlacedTopic))
+        Console.WriteLine("SUB: " & bidPlacedTopic)
 
         While (True)
-            Dim bidPlacedEvt As String = System.Text.Encoding.ASCII.GetString(subscriber.Receive())
-            Console.WriteLine("REC: " + bidPlacedEvt)
+            Dim bidPlacedEvt As String = Encoding.ASCII.GetString(subscriber.Receive())
+            Console.WriteLine("REC: " & bidPlacedEvt)
             PublishBidPlacedAck(bidPlacedEvt)
             Dim id As String = ParseMessage(bidPlacedEvt, "<id>", "</id>")
-            _auctions(id).auctionRunning = False
-            Dim bidderEmail As String = ParseMessage(bidPlacedEvt, "<params>", "</params>")
-            Dim auctionOverEvt As String = String.Concat("AuctionOver <id>", id, "</id> ", "<params>", bidderEmail, "</params>")
-            auctionEventPub.Send(System.Text.Encoding.ASCII.GetBytes(auctionOverEvt))
-            Console.WriteLine("PUB: " + auctionOverEvt)
+            Dim winner As String = ParseMessage(bidPlacedEvt, "<params>", "</params>")
+            _auctionRunner.BidPlaced(id, winner)
         End While
     End Sub
 
     Private Sub SubscribeToBidChangedAck()
-        Dim bidChangedAckSub As ISubscribeSocket = context.CreateSubscribeSocket()
-        bidChangedAckSub.Connect(Constants.BID_CHANGED_ACK_ADR)
-        bidChangedAckSub.Subscribe(System.Text.Encoding.ASCII.GetBytes(Constants.BID_CHANGED_ACK_TOPIC))
+        Dim bidChangedAckSub As ISubscribeSocket = _context.CreateSubscribeSocket()
+        bidChangedAckSub.Connect(ConfigurationManager.AppSettings("bidChangedAckAddr"))
+        bidChangedAckSub.Subscribe(Encoding.ASCII.GetBytes(ConfigurationManager.AppSettings("bidChangedAckTopic")))
 
         While (True)
-            Console.WriteLine(System.Text.Encoding.ASCII.GetString(bidChangedAckSub.Receive()))
+            Console.WriteLine("REC: " & Encoding.ASCII.GetString(bidChangedAckSub.Receive()))
         End While
     End Sub
 
     Private Sub SubscribeToAuctionOverAck()
-        Dim auctionOverAckSub As ISubscribeSocket = context.CreateSubscribeSocket()
-        auctionOverAckSub.Connect(Constants.AUCTION_OVER_ACK_ADR)
-        auctionOverAckSub.Subscribe(System.Text.Encoding.ASCII.GetBytes(Constants.AUCTION_OVER_ACK_TOPIC))
+        Dim auctionOverAckSub As ISubscribeSocket = _context.CreateSubscribeSocket()
+        auctionOverAckSub.Connect(ConfigurationManager.AppSettings("auctionOverAckAddr"))
+        auctionOverAckSub.Subscribe(System.Text.Encoding.ASCII.GetBytes(ConfigurationManager.AppSettings("auctionOverAckTopic")))
 
         While (True)
-            Dim message As String = System.Text.Encoding.ASCII.GetString(auctionOverAckSub.Receive())
+            Dim message As String = Encoding.ASCII.GetString(auctionOverAckSub.Receive())
             Dim id As String = ParseMessage(message, "<id>", "</id>")
-            _auctions.Remove(id)
-            Console.WriteLine(message)
+            Console.WriteLine("REC: " & message)
         End While
     End Sub
 
