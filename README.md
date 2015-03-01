@@ -4,9 +4,9 @@ for the project. It is responsible for running the auction. It is responsible fo
 
 ## Project Setup
 
-- Requires a CouchDB instance running on port 5984.
+Requires a CouchDB instance running on port 5984.
 
-- Database: auctions
+Database: auctions
 
 Sample Items:
 {
@@ -25,7 +25,7 @@ Sample Items:
 
 ## License
 
-- None
+None
 
 ## Setting up StartAuction service on AWS
 
