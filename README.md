@@ -8,7 +8,7 @@ for the project. It is responsible for running the auction. It is responsible fo
 
 - Database: auctions
 
-Sample Items:\n
+Sample Items:
 {
    "_id": "1",
    "_rev": "1-194f699921e40fc5fe4f35420fe22fd6",
