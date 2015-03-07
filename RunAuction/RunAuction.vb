@@ -7,21 +7,15 @@ Imports System.Text
 
 Public Module RunAuction
     Private _context As IZmqContext = ZmqContext.Create()
-    Private _bidPlacedAck, _auctionEventPub As ISendSocket
-    Private _auctionRunner As AuctionRunner
+    Private _auctionEventPub As ISendSocket
+    Private _auctions As New Dictionary(Of String, AuctionRunner)
 
 
     Public Sub Main()
-        InitializePublishers()
-        InitializeSubscribers()
-        SubscribeToAuctionStarted()
-    End Sub
-
-    Private Sub InitializePublishers()
-        _bidPlacedAck = _context.CreatePublishSocket()
-        _bidPlacedAck.Bind(ConfigurationManager.AppSettings("bidPlacedAckAddr"))
         _auctionEventPub = _context.CreatePublishSocket()
         _auctionEventPub.Bind(ConfigurationManager.AppSettings("auctionEventPubAddr"))
+        InitializeSubscribers()
+        SubscribeToAuctionStarted()
     End Sub
 
     Private Sub InitializeSubscribers()
@@ -53,9 +47,11 @@ Public Module RunAuction
             PublishAuctionStartedAck(auctionStartedAck, auctionStartedEvt)
             Dim id As String = ParseMessage(auctionStartedEvt, "<id>", "</id>")
             PublishAuctionRunningEvent(auctionRunningPub, id)
-            _auctionRunner = New AuctionRunner(id, _auctionEventPub)
-            Dim runAuctionThread As New Thread(AddressOf _auctionRunner.RunAuction)
-            runAuctionThread.Start()
+            Dim auctionRunner As New AuctionRunner(id, _auctionEventPub)
+            _auctions.Add(id, auctionRunner)
+            auctionRunner.RunAuction()
+            'Dim runAuctionThread As New Thread(AddressOf _auctionRunner.RunAuction)
+            'runAuctionThread.Start()
         End While
     End Sub
 
@@ -87,9 +83,9 @@ Public Module RunAuction
         End While
     End Sub
 
-    Private Sub PublishBidPlacedAck(ByVal message As String)
+    Private Sub PublishBidPlacedAck(ByVal bidPlacedAckPub As ISendSocket, ByVal message As String)
         Dim bidPlacedAck As String = "ACK " & message
-        _bidPlacedAck.Send(Encoding.ASCII.GetBytes(bidPlacedAck))
+        bidPlacedAckPub.Send(Encoding.ASCII.GetBytes(bidPlacedAck))
         Console.WriteLine("PUB: " & bidPlacedAck)
     End Sub
 
@@ -100,13 +96,16 @@ Public Module RunAuction
         subscriber.Subscribe(Encoding.ASCII.GetBytes(bidPlacedTopic))
         Console.WriteLine("SUB: " & bidPlacedTopic)
 
+        Dim bidPlacedAck As ISendSocket = _context.CreatePublishSocket()
+        bidPlacedAck.Bind(ConfigurationManager.AppSettings("bidPlacedAckAddr"))
+
         While (True)
             Dim bidPlacedEvt As String = Encoding.ASCII.GetString(subscriber.Receive())
             Console.WriteLine("REC: " & bidPlacedEvt)
-            PublishBidPlacedAck(bidPlacedEvt)
+            PublishBidPlacedAck(bidPlacedAck, bidPlacedEvt)
             Dim id As String = ParseMessage(bidPlacedEvt, "<id>", "</id>")
             Dim winner As String = ParseMessage(bidPlacedEvt, "<params>", "</params>")
-            _auctionRunner.BidPlaced(id, winner)
+            PublishAuctionOverEvt(id, winner)
         End While
     End Sub
 
@@ -130,6 +129,25 @@ Public Module RunAuction
             Dim id As String = ParseMessage(message, "<id>", "</id>")
             Console.WriteLine("REC: " & message)
         End While
+    End Sub
+
+    Public Sub PublishBidChangedEvt(ByVal id As String, ByVal currentBid As String)
+        Dim bidChangedEvt As String = String.Concat(ConfigurationManager.AppSettings("bidChangedTopic"), " <id>", id,
+                        "</id> ", "<params>", currentBid, "</params>")
+        _auctionEventPub.Send(Encoding.ASCII.GetBytes(bidChangedEvt))
+        Console.WriteLine("PUB: " & bidChangedEvt)
+    End Sub
+
+    Public Sub PublishAuctionOverEvt(ByVal id As String, ByVal winner As String)
+        Dim auctionOverEvt As String = String.Concat(ConfigurationManager.AppSettings("auctionOverTopic"), " <id>", id,
+                    "</id>", " <params>", winner, "</params>")
+        _auctionEventPub.Send(Encoding.ASCII.GetBytes(auctionOverEvt))
+        Console.WriteLine("PUB: " & auctionOverEvt)
+
+        If (_auctions.ContainsKey(id)) Then
+            _auctions(id).BidNotPlaced = False
+            _auctions.Remove(id)
+        End If
     End Sub
 
 End Module
