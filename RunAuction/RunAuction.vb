@@ -7,13 +7,13 @@ Imports System.Text
 
 Public Module RunAuction
     Private _context As IZmqContext = ZmqContext.Create()
-    Private _auctionEventPub As ISendSocket
+    Private _publisher As ISendSocket
     Private _auctions As New Dictionary(Of String, AuctionRunner)
 
 
     Public Sub Main()
-        _auctionEventPub = _context.CreatePublishSocket()
-        _auctionEventPub.Bind(ConfigurationManager.AppSettings("auctionEventPubAddr"))
+        _publisher = _context.CreatePublishSocket()
+        _publisher.Bind(ConfigurationManager.AppSettings("auctionEventPubAddr"))
         InitializeSubscribers()
         SubscribeToAuctionStarted()
     End Sub
@@ -27,6 +27,8 @@ Public Module RunAuction
         subToAuctionOverAckThread.Start()
         Dim subToAuctionRunningAckThread As New Thread(AddressOf SubscribeToAuctionRunningAck)
         subToAuctionRunningAckThread.Start()
+        Dim subToHeartbeatThread As New Thread(AddressOf SubscribeToHeartbeat)
+        subToHeartbeatThread.Start()
     End Sub
 
     Private Sub SubscribeToAuctionStarted()
@@ -47,7 +49,7 @@ Public Module RunAuction
             PublishAuctionStartedAck(auctionStartedAck, auctionStartedEvt)
             Dim id As String = ParseMessage(auctionStartedEvt, "<id>", "</id>")
             PublishAuctionRunningEvent(auctionRunningPub, id)
-            Dim auctionRunner As New AuctionRunner(id, _auctionEventPub)
+            Dim auctionRunner As New AuctionRunner(id, _publisher)
             _auctions.Add(id, auctionRunner)
             auctionRunner.RunAuction()
             'Dim runAuctionThread As New Thread(AddressOf _auctionRunner.RunAuction)
@@ -134,20 +136,34 @@ Public Module RunAuction
     Public Sub PublishBidChangedEvt(ByVal id As String, ByVal currentBid As String)
         Dim bidChangedEvt As String = String.Concat(ConfigurationManager.AppSettings("bidChangedTopic"), " <id>", id,
                         "</id> ", "<params>", currentBid, "</params>")
-        _auctionEventPub.Send(Encoding.ASCII.GetBytes(bidChangedEvt))
+        _publisher.Send(Encoding.ASCII.GetBytes(bidChangedEvt))
         Console.WriteLine("PUB: " & bidChangedEvt)
     End Sub
 
     Public Sub PublishAuctionOverEvt(ByVal id As String, ByVal winner As String)
         Dim auctionOverEvt As String = String.Concat(ConfigurationManager.AppSettings("auctionOverTopic"), " <id>", id,
                     "</id>", " <params>", winner, "</params>")
-        _auctionEventPub.Send(Encoding.ASCII.GetBytes(auctionOverEvt))
+        _publisher.Send(Encoding.ASCII.GetBytes(auctionOverEvt))
         Console.WriteLine("PUB: " & auctionOverEvt)
 
         If (_auctions.ContainsKey(id)) Then
             _auctions(id).BidNotPlaced = False
             _auctions.Remove(id)
         End If
+    End Sub
+
+    Private Sub SubscribeToHeartbeat()
+        Dim heartbeatSub As ISubscribeSocket = _context.CreateSubscribeSocket()
+        heartbeatSub.Connect(ConfigurationManager.AppSettings("heartbeatSubAddr"))
+        heartbeatSub.Subscribe(System.Text.Encoding.ASCII.GetBytes(ConfigurationManager.AppSettings("checkHeartbeatTopic")))
+
+        While (True)
+            Console.WriteLine("REC: " & Encoding.ASCII.GetString(heartbeatSub.Receive()))
+            Dim message As String = String.Concat(ConfigurationManager.AppSettings("checkHeartbeatTopicResponse"), " <params>",
+                    ConfigurationManager.AppSettings("serviceName"), "</params>")
+            _publisher.Send(Encoding.ASCII.GetBytes(message))
+            Console.WriteLine("PUB: " & message)
+        End While
     End Sub
 
 End Module
