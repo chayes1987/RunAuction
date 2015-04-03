@@ -19,7 +19,8 @@ Public Class AuctionRunner
 
     Public Sub RunAuction()
         Dim client As New CouchClient()
-        Dim db As CouchDatabase = client.GetDatabase(ConfigurationManager.AppSettings("dbName"))
+        Dim db As CouchDatabase = client.GetDatabase(
+            ConfigurationManager.AppSettings("dbName"))
         Dim document As AuctionItem = db.GetDocument(Of AuctionItem)(_currentAuctionId)
         Dim currentBid As Double = document.Starting_Bid
         Const waitTime As Integer = 10000
