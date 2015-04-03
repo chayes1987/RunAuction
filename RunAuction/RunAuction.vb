@@ -135,8 +135,9 @@ Public Module RunAuction
     End Sub
 
     Public Sub PublishBidChangedEvt(ByVal id As String, ByVal currentBid As String)
-        Dim bidChangedEvt As String = String.Concat(ConfigurationManager.AppSettings("bidChangedTopic"), " <id>", id,
-                        "</id> ", "<params>", currentBid, "</params>")
+        Dim bidChangedEvt As String = String.Concat(
+            ConfigurationManager.AppSettings("bidChangedTopic"), " <id>", id,
+            "</id> ", "<params>", currentBid, "</params>")
         _publisher.Send(Encoding.ASCII.GetBytes(bidChangedEvt))
         Console.WriteLine("PUB: " & bidChangedEvt)
     End Sub
