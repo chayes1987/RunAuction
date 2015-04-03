@@ -64,7 +64,8 @@ Public Module RunAuction
     End Sub
 
     Private Sub PublishAuctionRunningEvent(ByVal auctionRunningPub As ISendSocket, ByVal id As String)
-        Dim auctionRunningEvt As String = String.Concat(ConfigurationManager.AppSettings("auctionRunningTopic"), " <id>", id, "</id>")
+        Dim auctionRunningEvt As String = String.Concat(
+            ConfigurationManager.AppSettings("auctionRunningTopic"), " <id>", id, "</id>")
         auctionRunningPub.Send(Encoding.ASCII.GetBytes(auctionRunningEvt))
         Console.WriteLine("PUB: " & auctionRunningEvt)
     End Sub
