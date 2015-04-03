@@ -29,7 +29,6 @@ Public Class AuctionRunner
 
         While (BidNotPlaced)
             Thread.Sleep(waitTime)
-
             If (currentBid > document.Estimated_Value) Then
                 If (BidNotPlaced) Then
                     currentBid -= decrementAmount
