@@ -51,9 +51,8 @@ Public Module RunAuction
             PublishAuctionRunningEvent(auctionRunningPub, id)
             Dim auctionRunner As New AuctionRunner(id, _publisher)
             _auctions.Add(id, auctionRunner)
-            auctionRunner.RunAuction()
-            'Dim runAuctionThread As New Thread(AddressOf _auctionRunner.RunAuction)
-            'runAuctionThread.Start()
+            Dim runAuctionThread As New Thread(AddressOf auctionRunner.RunAuction)
+            runAuctionThread.Start()
         End While
     End Sub
 

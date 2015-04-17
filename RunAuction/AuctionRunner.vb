@@ -21,15 +21,15 @@ Public Class AuctionRunner
         Dim client As New CouchClient()
         Dim db As CouchDatabase = client.GetDatabase(
             ConfigurationManager.AppSettings("dbName"))
-        Dim document As AuctionItem = db.GetDocument(Of AuctionItem)(_currentAuctionId)
-        Dim currentBid As Double = document.Starting_Bid
+        Dim item As AuctionItem = db.GetDocument(Of AuctionItem)(_currentAuctionId)
+        Dim currentBid As Double = item.Starting_Bid
         Const waitTime As Integer = 10000
         Const decrementAmount As Integer = 50
         BidNotPlaced = True
 
         While (BidNotPlaced)
             Thread.Sleep(waitTime)
-            If (currentBid > document.Estimated_Value) Then
+            If (currentBid > item.Estimated_Value) Then
                 If (BidNotPlaced) Then
                     currentBid -= decrementAmount
                     PublishBidChangedEvt(_currentAuctionId, currentBid)
