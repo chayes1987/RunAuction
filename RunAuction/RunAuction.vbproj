@@ -101,8 +101,15 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AuctionRunner.vb" />
-    <Compile Include="AuctionItem.vb" />
-    <Compile Include="DatabaseManager.vb" />
+    <Compile Include="Models\AuctionItem.vb" />
+    <Compile Include="Broker\BrokerFacade.vb" />
+    <Compile Include="Broker\IBroker.vb" />
+    <Compile Include="Broker\MessageBroker.vb" />
+    <Compile Include="Broker\ZeroMqBroker.vb" />
+    <Compile Include="Database\CouchDbDatabase.vb" />
+    <Compile Include="Database\DatabaseFacade.vb" />
+    <Compile Include="Database\DatabaseType.vb" />
+    <Compile Include="Database\IDatabase.vb" />
     <Compile Include="My Project\AssemblyInfo.vb" />
     <Compile Include="My Project\Application.Designer.vb">
       <AutoGen>True</AutoGen>
@@ -119,6 +126,8 @@
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
     <Compile Include="RunAuction.vb" />
+    <Compile Include="Utils\Constants.vb" />
+    <Compile Include="Utils\MessageParser.vb" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="My Project\Resources.resx">

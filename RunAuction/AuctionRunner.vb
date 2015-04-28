@@ -20,10 +20,10 @@ Public Class AuctionRunner
     Private _currentAuctionId As String
 
     ''' <summary>
-    ''' Auction Event Publisher
+    ''' Broker
     ''' </summary>
     ''' <remarks></remarks>
-    Private _auctionEventPub As ISendSocket
+    Private _broker As IBroker
 
     ''' <summary>
     ''' Bid Not Placed
@@ -36,11 +36,11 @@ Public Class AuctionRunner
     ''' Constructor
     ''' </summary>
     ''' <param name="currentAuctionId">The current auction ID</param>
-    ''' <param name="auctionEventPub">Publisher object</param>
+    ''' <param name="broker">Broker object</param>
     ''' <remarks></remarks>
-    Public Sub New(ByVal currentAuctionId As String, ByVal auctionEventPub As ISendSocket)
+    Public Sub New(ByVal currentAuctionId As String, ByVal broker As IBroker)
         Me._currentAuctionId = currentAuctionId
-        Me._auctionEventPub = auctionEventPub
+        Me._broker = broker
     End Sub
 
     ''' <summary>
@@ -49,7 +49,8 @@ Public Class AuctionRunner
     ''' <remarks></remarks>
     Public Sub RunAuction()
         ' Get the item details using the ID
-        Dim item = DatabaseManager.getItem(_currentAuctionId)
+        Dim database As IDatabase = DatabaseFacade.GetDatabase()
+        Dim item = database.getItem(_currentAuctionId)
         If (Not IsNothing(item)) Then
             ' Set the starting bid, time to wait between decrements, and the amount to decrement by
             Dim currentBid As Double = item.Starting_Bid
@@ -65,11 +66,11 @@ Public Class AuctionRunner
                     If (BidNotPlaced) Then
                         ' Decrement the bid and inform the bidders
                         currentBid -= decrementAmount
-                        PublishBidChangedEvt(_currentAuctionId, currentBid)
+                        _broker.PublishBidChangedEvt(_currentAuctionId, currentBid)
                     End If
                 Else
                     ' End the auction
-                    PublishAuctionOverEvt(_currentAuctionId, "No Winner")
+                    _broker.PublishAuctionOverEvt(_currentAuctionId, "No Winner")
                     BidNotPlaced = False
                 End If
             End While

@@ -6,10 +6,11 @@ Imports System.Configuration
 ' CouchDB -> https://github.com/vdaron/DreamSeat
 
 ''' <summary>
-''' Database Manager
+''' CouchDB Database Implements IDatabase
 ''' </summary>
 ''' <remarks></remarks>
-Public Class DatabaseManager
+Public Class CouchDbDatabase
+    Implements IDatabase
 
     ''' <summary>
     ''' Get Item
@@ -17,7 +18,7 @@ Public Class DatabaseManager
     ''' <param name="id">The ID of the auction</param>
     ''' <returns>The item matching the ID</returns>
     ''' <remarks></remarks>
-    Public Shared Function getItem(ByVal id As String) As AuctionItem
+    Public Function getItem(ByVal id As String) As AuctionItem Implements IDatabase.GetItem
         Dim item As AuctionItem = Nothing
         ' Connect to the database and get the item
         Try
